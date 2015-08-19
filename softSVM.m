@@ -1,0 +1,78 @@
+%soft SVM
+rand('seed',88);
+%Total data n*2
+n = 100; 
+X1 = rand(n,2); X2 = rand(n,2) + 0.5*ones(n,1)*[1 2];  y = [ones(n,1) ; -ones(n,1)];
+X = [X1;X2];  [n,d] = size(X);
+e=ones(n,1);
+%-----------------------------matrices
+% y as sparse i_s=[1:n]; Ds=sparse(i_s,i_s,y,n,n);
+%% Active set SVM  %  G=Dy*X*X'*Dy   if   k=X*X' then G=Dy*(k)*Dy
+clc
+%----kernel-------------
+k=X*X';  Gtmp=bsxfun(@times, y, k); clear k
+G=bsxfun(@times, y',Gtmp);  clear Gtmp
+%--------------
+%Ic=       {i|alpha_i=C}
+%Io=       {i|alpha_i=0}
+%Iw=       {i|0<alpha_i<C}
+I0=zeros(n,1);    I=[1;n/2+1];     alpha0=[1;1];  
+%---------------------------------------------objective function
+q=[];
+q=[q,0.5*alpha0'*G(I,I)*alpha0-e(I)'*alpha0];
+l = sqrt(eps);
+flag_0=1;
+while(flag_0)    
+    %-------[alpha,b]=[G,y,y',0]\[1;0]---------------------    
+    L=chol(G(I,I)+l*eye(length(I)));
+    Ge=L\(L'\e(I));
+    Gy=L\(L'\y(I));
+    b=(y(I)'*Ge)/(y(I)'*Gy);
+    alpha1=L\(L'\(e(I)-y(I)*b));        
+    %--------------------------------------------------
+    %-----alpha<0----I->IO-----------------------------
+    if ((max(alpha1<0)==1))
+        %--------------------------
+        t=-alpha0./(alpha1-alpha0); ineg=find(alpha1<0); [t pos] = min(t(ineg));        
+        alpha1=alpha0+t*(alpha1-alpha0);               
+        ind0=ineg(pos);  alpha1(ind0)=[];  I(ind0)=[];alpha0=alpha1;        
+    else %I0->I_alpha   
+    %---------------------------------------------------------------
+    %----------------coarse search----------------------------------
+        %if (n>500)            
+           if (n<=100)
+               Index=[1:n];    Index(I)=[];  flag=1; 
+               tam_index=length(Index); p=1;    step=tam_index;    s=step;           
+           else
+               Index=[1:n];    Index(I)=[];  flag=1; p=1;    step=50;    s=step;
+               tam_index=length(Index);            
+           end
+            
+            while (flag)
+                II=Index(p:s);  M=G(II,I)*alpha1+b*y(II)-e(II); inI=find(M <-sqrt(eps));
+                %------forward-----------
+                if isempty(inI)
+                    if (s==tam_index) alpha0=alpha1; flag=0; flag_0=0;
+                    else
+                        p=s+1;  s=s+step;
+                        if (s>tam_index)  s=tam_index; end
+                    end
+                %--------I0->I------------------    
+                else
+                    [minValue,ind_min]=min(M); ind_min=Index(p+ind_min-1);
+                    p=s+1;  s=s+step;  flag=0;
+                    %------------------
+                    if (s>tam_index) s=tam_index; end
+                    I=[I;ind_min]; alpha0=[alpha1;0];
+                end
+            end
+     %------------end coarse search----------------------------------     
+    end
+    q=[q,0.5*alpha0'*G(I,I)*alpha0-e(I)'*alpha0]; disp(q(end))
+end
+
+figure
+plot(q)
+plotHiperplane(X, X1,X2,y, alpha0,b,I)
+clear
+

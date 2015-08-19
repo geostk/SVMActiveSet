@@ -1,0 +1,24 @@
+function plotHiperplane(X, X1, X2, y, alpha,b,I)
+figure
+Dy=diag(y(I));
+w=X(I,:)'*Dy*alpha
+
+plot(X1(:,1),X1(:,2),'+')
+hold on
+plot(X2(:,1),X2(:,2),'*r')
+plot(X(I,1),X(I,2),'oc')
+
+ax = axis;
+xmin = ax(1);
+xmax = ax(2);
+
+
+ymin=(-w(1)*xmin-b)/w(2);
+ymax=(-w(1)*xmax-b)/w(2);
+plot([xmin xmax],[ymin ymax],'g')
+plot([xmin xmax],[ymin ymax]+1/norm(w),'g')
+plot([xmin xmax],[ymin ymax]-1/norm(w),'g')
+
+
+
+
